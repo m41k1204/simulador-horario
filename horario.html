@@ -125,7 +125,12 @@
     padding: 4px 6px; overflow: hidden; font-size: 11px; line-height: 1.3;
     border-left: 3px solid; cursor: default;
   }
-  .blk b { display: block; font-size: 11.5px; font-weight: 600; }
+  /* el nombre del curso manda; si no entra, se corta con puntos suspensivos */
+  .blk b {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; font-size: 11.5px; font-weight: 600;
+    padding-right: 12px; hyphens: auto;
+  }
   .blk .m { color: rgba(28,33,40,.6); font-size: 10.5px; }
   /* las sesiones sincrónicas van rayadas para distinguirlas de las presenciales */
   .blk.virt {
@@ -366,10 +371,11 @@ function pintarGrilla() {
   for (const { s, e } of todas) {
     const mala = todas.some(o => o.s !== s && choca(o.s, s));
     const el = bloque(s, e.color, mala);
-    el.innerHTML = `<b>${e.curso.codigo}</b>
-      <span class="m">${s.tipo === "lab" ? "Lab" : "Teoría"} · Sec ${e.sec.seccion}</span>
+    el.innerHTML = `<b></b>
+      <span class="m">${e.curso.codigo} · ${s.tipo === "lab" ? "Lab" : "Teoría"} ${e.sec.seccion}</span>
       <span class="m">${lugar(s)}</span>` +
       (s.frecuencia !== "Semana General" ? `<span class="m">${s.frecuencia}</span>` : "");
+    el.querySelector("b").textContent = e.curso.nombre;
     const x = document.createElement("button");
     x.className = "x"; x.textContent = "×"; x.title = "Quitar " + e.curso.codigo;
     x.onclick = () => { sel = sel.filter(v => v.codigo !== e.curso.codigo); guardar(); pintar(); };
@@ -385,7 +391,8 @@ function pintarGrilla() {
         o.s.dia === s.dia && o.s.inicio === s.inicio)) continue;
       const el = bloque(s, "#6b7684", false);
       el.classList.add("ghost");
-      el.innerHTML = `<b>${ghost.curso.codigo}</b><span class="m">${s.tipo === "lab" ? "Lab" : "Teoría"}</span>`;
+      el.innerHTML = `<b></b><span class="m">${ghost.curso.codigo} · ${s.tipo === "lab" ? "Lab" : "Teoría"}</span>`;
+      el.querySelector("b").textContent = ghost.curso.nombre;
       items.push({ s, el });
     }
   }
