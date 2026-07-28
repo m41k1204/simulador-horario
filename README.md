@@ -39,6 +39,9 @@ python build_data.py        # o: python build_data.py ruta/al/excel.xlsx
   sección. La app trata cada combinación sección+lab como una opción.
 - La frecuencia `Semana A` / `Semana B` se respeta: dos sesiones en semanas
   distintas no cuentan como cruce.
+- Modalidad: cada opción trae una etiqueta (Presencial / Sincrónico / Mixto), las
+  sesiones virtuales salen marcadas en morado en la lista y rayadas en la grilla,
+  y cada bloque dice `Presencial · aula` o `Sincrónico`.
 - 95 secciones del Excel vienen sin docente; se muestran como "Docente por definir".
 - `carga_habil.tsv` está pegada hasta `MT5310`; si faltan cursos al final de la lista
   (MT53xx en adelante), agregarlos ahí y volver a correr `build_data.py`.

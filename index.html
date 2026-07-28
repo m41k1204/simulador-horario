@@ -78,6 +78,14 @@
   .opt .sec { font-weight: 600; flex: none; min-width: 74px; }
   .opt .info { flex: 1; min-width: 0; }
   .when { display: block; color: var(--dim); font-size: 11.5px; }
+  .when .virt { color: #7c3aed; }
+  .opt .right { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .mod {
+    font-size: 10px; padding: 1px 6px; border-radius: 999px; white-space: nowrap;
+    background: var(--panel-2); color: var(--dim);
+  }
+  .mod.sincronico { background: #f3e8ff; color: #6d28d9; }
+  .mod.mixto { background: #ffedd5; color: #9a3412; }
   .teacher { display: block; color: var(--dim); font-size: 11px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .vac { flex: none; font-size: 11px; color: var(--dim); }
 
@@ -119,6 +127,11 @@
   }
   .blk b { display: block; font-size: 11.5px; font-weight: 600; }
   .blk .m { color: rgba(28,33,40,.6); font-size: 10.5px; }
+  /* las sesiones sincrónicas van rayadas para distinguirlas de las presenciales */
+  .blk.virt {
+    background-image: repeating-linear-gradient(45deg,
+      rgba(255,255,255,.55) 0 6px, transparent 6px 12px);
+  }
   .blk.ghost { opacity: .7; border-style: dashed; pointer-events: none; }
   .blk.bad { outline: 2px solid var(--danger); outline-offset: -2px; }
   .blk .x {
@@ -183,6 +196,14 @@ let areasOn = new Set(AREAS.map(a => a[0]));
 
 /* ---------- utilidades ---------- */
 const hhmm = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+const esVirtual = s => s.modalidad === "Sincronico";
+// las sesiones sincrónicas siempre son en "UTEC-BA Virtual", así que basta la etiqueta
+const lugar = s => esVirtual(s) ? "Sincrónico" : "Presencial · " + s.ubicacion.replace("UTEC-BA ", "");
+const MODS = { presencial: "Presencial", sincronico: "Sincrónico", mixto: "Mixto" };
+const modalidadDe = ses => {
+  const v = ses.filter(esVirtual).length;
+  return v === 0 ? "presencial" : v === ses.length ? "sincronico" : "mixto";
+};
 const opcionesDe = c => c.secciones.flatMap(s =>
   s.labs.length ? s.labs.map(l => ({ sec: s, lab: l })) : [{ sec: s, lab: null }]);
 const sesionesDe = o => o.sec.fijas.concat(o.lab ? o.lab.sesiones : []);
@@ -283,12 +304,16 @@ function pintarLista() {
 
         const b = document.createElement("button");
         b.className = "opt" + (on ? " on" : "") + (clash ? " clash" : "");
+        const mod = modalidadDe(ses);
         b.innerHTML = `<span class="sec">Sec ${o.sec.seccion}${o.lab ? " · L" + o.lab.grupo.replace(/\D+/g, "") : ""}</span>
           <span class="info"><span class="when"></span><span class="teacher"></span></span>
-          <span class="vac">${o.sec.vacantes}</span>`;
-        b.querySelector(".when").textContent = ses.map(s =>
-          `${ABBR[s.dia]} ${hhmm(s.inicio)}-${hhmm(s.fin)}` +
-          (s.frecuencia !== "Semana General" ? ` (${s.frecuencia.replace("Semana ", "sem ")})` : "")
+          <span class="right"><span class="mod ${mod}">${MODS[mod]}</span>
+          <span class="vac">${o.sec.vacantes} vac</span></span>`;
+        b.querySelector(".when").innerHTML = ses.map(s =>
+          `<span class="${esVirtual(s) ? "virt" : ""}">${ABBR[s.dia]} ${hhmm(s.inicio)}-${hhmm(s.fin)}` +
+          (esVirtual(s) ? " virtual" : "") +
+          (s.frecuencia !== "Semana General" ? ` (${s.frecuencia.replace("Semana ", "sem ")})` : "") +
+          "</span>"
         ).join(" · ");
         b.querySelector(".teacher").textContent =
           o.sec.docentes.join(" / ") || "Docente por definir";
@@ -343,7 +368,7 @@ function pintarGrilla() {
     const el = bloque(s, e.color, mala);
     el.innerHTML = `<b>${e.curso.codigo}</b>
       <span class="m">${s.tipo === "lab" ? "Lab" : "Teoría"} · Sec ${e.sec.seccion}</span>
-      <span class="m">${s.ubicacion.replace("UTEC-BA ", "")}</span>` +
+      <span class="m">${lugar(s)}</span>` +
       (s.frecuencia !== "Semana General" ? `<span class="m">${s.frecuencia}</span>` : "");
     const x = document.createElement("button");
     x.className = "x"; x.textContent = "×"; x.title = "Quitar " + e.curso.codigo;
@@ -400,7 +425,7 @@ function repartirColumnas(items) {
 
 function bloque(s, color, mala) {
   const el = document.createElement("div");
-  el.className = "blk" + (mala ? " bad" : "");
+  el.className = "blk" + (mala ? " bad" : "") + (esVirtual(s) ? " virt" : "");
   el.style.top = ((s.inicio - H0 * 60) / 60) * PX + "px";
   el.style.height = Math.max(((s.fin - s.inicio) / 60) * PX - 2, 18) + "px";
   el.style.background = color + "1a";
