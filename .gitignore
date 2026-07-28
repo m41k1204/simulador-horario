@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# el Excel de Consulta de Horario lleva el código de alumno en el nombre
+Consulta_Horario-*.xlsx

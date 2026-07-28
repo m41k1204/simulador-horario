@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Armador de horario · UTEC 2026-2</title>
+<style>
+  :root {
+    /* evita que el navegador aplique su modo oscuro automático encima */
+    color-scheme: light only;
+    --bg: #ffffff;
+    --panel: #f7f8fa;
+    --panel-2: #eaeef4;
+    --line: #dde2e9;
+    --txt: #1c2128;
+    --dim: #6b7684;
+    --accent: #2563eb;
+    --danger: #d1242f;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    margin: 0; height: 100vh; display: flex;
+    font: 13px/1.45 ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--txt);
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+
+  /* ---------- panel izquierdo ---------- */
+  #side {
+    width: 400px; flex: none; display: flex; flex-direction: column;
+    background: var(--panel); border-right: 1px solid var(--line);
+  }
+  #side header { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0 0 10px; font-size: 15px; letter-spacing: .2px; }
+  h1 small { color: var(--dim); font-weight: 400; }
+  #q {
+    width: 100%; padding: 8px 10px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--txt);
+  }
+  #q:focus { outline: none; border-color: var(--accent); }
+  .chips { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+  .chip {
+    padding: 4px 9px; border-radius: 999px; font-size: 11.5px;
+    border: 1px solid var(--line); background: transparent; color: var(--dim);
+  }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+
+  #list { flex: 1; overflow-y: auto; padding: 6px 8px 40px; }
+  .course { border-radius: 8px; margin-bottom: 3px; }
+  .course > .head {
+    display: flex; gap: 8px; align-items: baseline; width: 100%;
+    padding: 8px 10px; background: none; border: 0; border-radius: 8px; text-align: left;
+  }
+  .course > .head:hover { background: var(--panel-2); }
+  .course.open > .head { background: var(--panel-2); }
+  .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--dim); flex: none; }
+  .cname { flex: 1; }
+  .badge { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); visibility: hidden; }
+  .course.picked .badge { visibility: visible; }
+  .tag {
+    flex: none; font-size: 10.5px; padding: 1px 6px; border-radius: 999px;
+    background: #fef3c7; color: #92400e; font-weight: 600;
+  }
+
+  .opts { display: none; padding: 2px 8px 10px 10px; }
+  .course.open .opts { display: block; }
+  .opt {
+    display: flex; gap: 8px; width: 100%; text-align: left; align-items: flex-start;
+    padding: 7px 9px; margin-bottom: 3px; border-radius: 7px;
+    background: var(--bg); border: 1px solid var(--line);
+  }
+  .opt:hover { border-color: var(--accent); }
+  .opt.on { border-color: var(--accent); background: #e8f0fe; }
+  .opt.clash { border-color: #f3c0c3; background: #fff6f6; }
+  .opt.clash .when { color: #b4434c; }
+  .opt .sec { font-weight: 600; flex: none; min-width: 74px; }
+  .opt .info { flex: 1; min-width: 0; }
+  .when { display: block; color: var(--dim); font-size: 11.5px; }
+  .teacher { display: block; color: var(--dim); font-size: 11px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vac { flex: none; font-size: 11px; color: var(--dim); }
+
+  /* ---------- panel derecho ---------- */
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #bar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 11px 18px; border-bottom: 1px solid var(--line); background: var(--panel);
+  }
+  #stats { color: var(--dim); }
+  #stats b { color: var(--txt); }
+  #warn { color: var(--danger); }
+  #bar .spacer { flex: 1; }
+  #bar button {
+    background: var(--panel-2); border: 1px solid var(--line);
+    padding: 5px 11px; border-radius: 7px;
+  }
+  #bar button:hover { border-color: var(--accent); }
+
+  #gridwrap { flex: 1; overflow: auto; padding: 14px 18px 24px; }
+  #grid { position: relative; min-width: 720px; }
+  .gcol-head { display: grid; grid-template-columns: 52px repeat(6, 1fr); margin-bottom: 4px; }
+  .gcol-head div { text-align: center; color: var(--dim); font-size: 11.5px; }
+  .body { position: relative; display: grid; grid-template-columns: 52px repeat(6, 1fr); }
+  .hours { position: relative; }
+  .hours span {
+    position: absolute; right: 8px; transform: translateY(-6px);
+    font-size: 10.5px; color: var(--dim);
+  }
+  .day { position: relative; border-left: 1px solid var(--line); }
+  .day:last-child { border-right: 1px solid var(--line); }
+  .hline { position: absolute; left: 0; right: 0; border-top: 1px solid var(--line); }
+  .hline.half { border-top-style: dotted; opacity: .45; }
+
+  .blk {
+    position: absolute; left: 2px; right: 2px; border-radius: 6px;
+    padding: 4px 6px; overflow: hidden; font-size: 11px; line-height: 1.3;
+    border-left: 3px solid; cursor: default;
+  }
+  .blk b { display: block; font-size: 11.5px; font-weight: 600; }
+  .blk .m { color: rgba(28,33,40,.6); font-size: 10.5px; }
+  .blk.ghost { opacity: .7; border-style: dashed; pointer-events: none; }
+  .blk.bad { outline: 2px solid var(--danger); outline-offset: -2px; }
+  .blk .x {
+    position: absolute; top: 2px; right: 3px; border: 0; background: none;
+    color: rgba(28,33,40,.35); font-size: 13px; line-height: 1; padding: 2px;
+  }
+  .blk .x:hover { color: var(--danger); }
+  .empty { color: var(--dim); padding: 40px 0; text-align: center; }
+</style>
+</head>
+<body>
+
+<div id="side">
+  <header>
+    <h1>Armador de horario <small id="src">2026-2</small></h1>
+    <input id="q" placeholder="Buscar curso, código o docente…" autocomplete="off">
+    <div class="chips" id="filters"></div>
+  </header>
+  <div id="list"></div>
+</div>
+
+<div id="main">
+  <div id="bar">
+    <span id="stats"></span>
+    <span id="warn"></span>
+    <span class="spacer"></span>
+    <button id="copy">Copiar resumen</button>
+    <button id="clear">Limpiar</button>
+  </div>
+  <div id="gridwrap">
+    <div id="grid"></div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+const DIAS = ["", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const ABBR = ["", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+// filtros del panel izquierdo: id, etiqueta y a qué cursos aplica
+const AREAS = [
+  ["obligatorio", "Obligatorios", c => c.tipo === "Obligatorio"],
+  ["facultad", "Electivos de la facultad", c => c.tipo !== "Obligatorio" && c.facultad],
+  ["otros", "Otros electivos", c => c.tipo !== "Obligatorio" && !c.facultad],
+];
+const H0 = 7, H1 = 22, PX = 44;           // rango horario de la grilla y px por hora
+const PALETTE = ["#2563eb","#15803d","#b45309","#7c3aed","#be185d","#0e7490","#c2410c","#4d7c0f"];
+
+if (!window.DATA) {
+  document.getElementById("list").innerHTML =
+    '<p class="empty">No se cargaron los datos (falta <b>data.js</b>).<br><br>' +
+    'Abre <b>horario.html</b>, que trae todo en un solo archivo.</p>';
+  throw new Error("data.js no cargó");
+}
+const cursos = window.DATA.cursos;
+const porCodigo = Object.fromEntries(cursos.map(c => [c.codigo, c]));
+const KEY = "utec-horario-2026-2";
+
+let sel = cargar();          // [{codigo, seccion, lab}]
+let abierto = null;          // código del curso expandido
+let ghost = null;            // opción bajo el cursor
+let areasOn = new Set(AREAS.map(a => a[0]));
+
+/* ---------- utilidades ---------- */
+const hhmm = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+const opcionesDe = c => c.secciones.flatMap(s =>
+  s.labs.length ? s.labs.map(l => ({ sec: s, lab: l })) : [{ sec: s, lab: null }]);
+const sesionesDe = o => o.sec.fijas.concat(o.lab ? o.lab.sesiones : []);
+const idDe = o => o.codigo + "|" + o.seccion + "|" + (o.lab || "");
+const opcId = (c, o) => c.codigo + "|" + o.sec.seccion + "|" + (o.lab ? o.lab.grupo : "");
+
+// dos sesiones chocan si comparten día, se solapan y coinciden en semana (A/B/General)
+function choca(a, b) {
+  if (a.dia !== b.dia || a.inicio >= b.fin || b.inicio >= a.fin) return false;
+  const g = f => f === "Semana General";
+  return g(a.frecuencia) || g(b.frecuencia) || a.frecuencia === b.frecuencia;
+}
+
+function cargar() {
+  try {
+    const v = JSON.parse(localStorage.getItem(KEY) || "[]");
+    return v.filter(x => porCodigo[x.codigo]);
+  } catch { return []; }
+}
+const guardar = () => localStorage.setItem(KEY, JSON.stringify(sel));
+
+// resuelve la selección guardada a {curso, seccion, lab, sesiones, color}
+function elegidos() {
+  return sel.map((x, i) => {
+    const curso = porCodigo[x.codigo];
+    const sec = curso.secciones.find(s => s.seccion === x.seccion);
+    if (!sec) return null;
+    const lab = x.lab ? sec.labs.find(l => l.grupo === x.lab) : null;
+    if (x.lab && !lab) return null;
+    return {
+      x, curso, sec, lab,
+      color: PALETTE[i % PALETTE.length],
+      sesiones: sec.fijas.concat(lab ? lab.sesiones : []),
+    };
+  }).filter(Boolean);
+}
+
+/* ---------- panel de cursos ---------- */
+function pintarFiltros() {
+  const f = document.getElementById("filters");
+  f.innerHTML = "";
+  for (const [id, txt, test] of AREAS) {
+    const b = document.createElement("button");
+    b.className = "chip" + (areasOn.has(id) ? " on" : "");
+    b.textContent = `${txt} (${cursos.filter(test).length})`;
+    b.onclick = () => {
+      areasOn.has(id) ? areasOn.delete(id) : areasOn.add(id);
+      pintarFiltros(); pintarLista();
+    };
+    f.appendChild(b);
+  }
+}
+
+function pintarLista() {
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const tomadas = elegidos().flatMap(e => e.sesiones);
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+
+  const visibles = cursos.filter(c => {
+    if (!AREAS.some(([id, , test]) => areasOn.has(id) && test(c))) return false;
+    if (!q) return true;
+    return (c.nombre + " " + c.codigo + " " + c.departamento + " " +
+      c.secciones.map(s => s.docentes.join(" ")).join(" ")).toLowerCase().includes(q);
+  });
+
+  if (!visibles.length) {
+    list.innerHTML = '<p class="empty">Sin resultados</p>';
+    return;
+  }
+
+  for (const c of visibles) {
+    const picked = sel.filter(x => x.codigo === c.codigo);
+    const div = document.createElement("div");
+    div.className = "course" + (abierto === c.codigo ? " open" : "") + (picked.length ? " picked" : "");
+
+    const head = document.createElement("button");
+    head.className = "head";
+    head.innerHTML = `<span class="badge"></span><span class="code">${c.codigo}</span>
+      <span class="cname"></span>
+      ${c.tipo === "Obligatorio" ? `<span class="tag">ciclo ${c.ciclo}</span>` : ""}
+      <span class="vac">${c.creditos} cr</span>`;
+    head.querySelector(".cname").textContent = c.nombre;
+    head.title = `${c.departamento} · ${c.tipo} · ${c.secciones.length} sección(es)`;
+    head.onclick = () => { abierto = abierto === c.codigo ? null : c.codigo; pintarLista(); };
+    div.appendChild(head);
+
+    if (abierto === c.codigo) {
+      const box = document.createElement("div");
+      box.className = "opts";
+      for (const o of opcionesDe(c)) {
+        const id = opcId(c, o);
+        const on = picked.some(p => idDe(p) === id);
+        const ses = sesionesDe(o);
+        // choca con lo ya elegido (ignorando otras opciones del mismo curso)
+        const otras = elegidos().filter(e => e.curso.codigo !== c.codigo).flatMap(e => e.sesiones);
+        const clash = !on && ses.some(a => otras.some(b => choca(a, b)));
+
+        const b = document.createElement("button");
+        b.className = "opt" + (on ? " on" : "") + (clash ? " clash" : "");
+        b.innerHTML = `<span class="sec">Sec ${o.sec.seccion}${o.lab ? " · L" + o.lab.grupo.replace(/\D+/g, "") : ""}</span>
+          <span class="info"><span class="when"></span><span class="teacher"></span></span>
+          <span class="vac">${o.sec.vacantes}</span>`;
+        b.querySelector(".when").textContent = ses.map(s =>
+          `${ABBR[s.dia]} ${hhmm(s.inicio)}-${hhmm(s.fin)}` +
+          (s.frecuencia !== "Semana General" ? ` (${s.frecuencia.replace("Semana ", "sem ")})` : "")
+        ).join(" · ");
+        b.querySelector(".teacher").textContent =
+          o.sec.docentes.join(" / ") || "Docente por definir";
+        b.onmouseenter = () => { ghost = { curso: c, ses }; pintarGrilla(); };
+        b.onmouseleave = () => { ghost = null; pintarGrilla(); };
+        b.onclick = () => alternar(c, o, on);
+        box.appendChild(b);
+      }
+      div.appendChild(box);
+    }
+    list.appendChild(div);
+  }
+}
+
+function alternar(c, o, estaba) {
+  sel = sel.filter(x => x.codigo !== c.codigo);       // un curso, una sola opción
+  if (!estaba) sel.push({ codigo: c.codigo, seccion: o.sec.seccion, lab: o.lab ? o.lab.grupo : null });
+  ghost = null;
+  guardar(); pintar();
+}
+
+/* ---------- grilla ---------- */
+function pintarGrilla() {
+  const g = document.getElementById("grid");
+  const alto = (H1 - H0) * PX;
+
+  let html = '<div class="gcol-head"><div></div>' +
+    DIAS.slice(1).map(d => `<div>${d}</div>`).join("") + "</div>";
+  html += '<div class="body"><div class="hours" style="height:' + alto + 'px">';
+  for (let h = H0; h <= H1; h++) {
+    html += `<span style="top:${(h - H0) * PX}px">${String(h).padStart(2, "0")}:00</span>`;
+  }
+  html += "</div>";
+  for (let d = 1; d <= 6; d++) {
+    html += `<div class="day" data-d="${d}" style="height:${alto}px">`;
+    for (let h = H0; h <= H1; h++) {
+      html += `<div class="hline" style="top:${(h - H0) * PX}px"></div>`;
+      if (h < H1) html += `<div class="hline half" style="top:${(h - H0 + .5) * PX}px"></div>`;
+    }
+    html += "</div>";
+  }
+  html += "</div>";
+  g.innerHTML = html;
+
+  const cols = [...g.querySelectorAll(".day")];
+  const els = elegidos();
+  const todas = els.flatMap(e => e.sesiones.map(s => ({ s, e })));
+  const items = [];
+
+  for (const { s, e } of todas) {
+    const mala = todas.some(o => o.s !== s && choca(o.s, s));
+    const el = bloque(s, e.color, mala);
+    el.innerHTML = `<b>${e.curso.codigo}</b>
+      <span class="m">${s.tipo === "lab" ? "Lab" : "Teoría"} · Sec ${e.sec.seccion}</span>
+      <span class="m">${s.ubicacion.replace("UTEC-BA ", "")}</span>` +
+      (s.frecuencia !== "Semana General" ? `<span class="m">${s.frecuencia}</span>` : "");
+    const x = document.createElement("button");
+    x.className = "x"; x.textContent = "×"; x.title = "Quitar " + e.curso.codigo;
+    x.onclick = () => { sel = sel.filter(v => v.codigo !== e.curso.codigo); guardar(); pintar(); };
+    el.appendChild(x);
+    el.title = `${e.curso.codigo} ${e.curso.nombre}\n${s.grupo} · ${s.modalidad}\n${s.docente}`;
+    items.push({ s, el });
+  }
+
+  if (ghost) {
+    const yaEsta = sel.some(x => x.codigo === ghost.curso.codigo);
+    for (const s of ghost.ses) {
+      if (yaEsta && todas.some(o => o.e.curso.codigo === ghost.curso.codigo &&
+        o.s.dia === s.dia && o.s.inicio === s.inicio)) continue;
+      const el = bloque(s, "#6b7684", false);
+      el.classList.add("ghost");
+      el.innerHTML = `<b>${ghost.curso.codigo}</b><span class="m">${s.tipo === "lab" ? "Lab" : "Teoría"}</span>`;
+      items.push({ s, el });
+    }
+  }
+
+  repartirColumnas(items);
+  for (const it of items) cols[it.s.dia - 1].appendChild(it.el);
+}
+
+// los bloques que se pisan en el mismo día se reparten el ancho en carriles
+function repartirColumnas(items) {
+  for (let d = 1; d <= 6; d++) {
+    const dia = items.filter(i => i.s.dia === d).sort((a, b) => a.s.inicio - b.s.inicio);
+    let grupo = [], finGrupo = -1;
+    const cerrar = () => {
+      const carriles = [];
+      for (const it of grupo) {
+        let c = carriles.findIndex(fin => fin <= it.s.inicio);
+        if (c === -1) c = carriles.push(0) - 1;
+        carriles[c] = it.s.fin;
+        it.carril = c;
+      }
+      for (const it of grupo) {
+        const w = 100 / carriles.length;
+        it.el.style.left = `calc(${it.carril * w}% + 2px)`;
+        it.el.style.right = `calc(${100 - (it.carril + 1) * w}% + 2px)`;
+      }
+      grupo = []; finGrupo = -1;
+    };
+    for (const it of dia) {
+      if (grupo.length && it.s.inicio >= finGrupo) cerrar();
+      grupo.push(it);
+      finGrupo = Math.max(finGrupo, it.s.fin);
+    }
+    if (grupo.length) cerrar();
+  }
+}
+
+function bloque(s, color, mala) {
+  const el = document.createElement("div");
+  el.className = "blk" + (mala ? " bad" : "");
+  el.style.top = ((s.inicio - H0 * 60) / 60) * PX + "px";
+  el.style.height = Math.max(((s.fin - s.inicio) / 60) * PX - 2, 18) + "px";
+  el.style.background = color + "1a";
+  el.style.borderLeftColor = color;
+  el.style.color = color;
+  return el;
+}
+
+/* ---------- barra superior ---------- */
+function pintarBarra() {
+  const els = elegidos();
+  const min = els.reduce((t, e) => t + e.sesiones.reduce((u, s) => u + s.fin - s.inicio, 0), 0);
+  const cr = els.reduce((t, e) => t + e.curso.creditos, 0);
+  const obl = els.filter(e => e.curso.tipo === "Obligatorio").length;
+  document.getElementById("stats").innerHTML =
+    `<b>${els.length}</b> curso${els.length === 1 ? "" : "s"} (${obl} oblig.) · ` +
+    `<b>${cr}</b> créditos · <b>${(min / 60).toFixed(1)}</b> h/semana`;
+
+  const todas = els.flatMap(e => e.sesiones.map(s => ({ s, e })));
+  const pares = new Set();
+  for (const a of todas) for (const b of todas) {
+    if (a.e.curso.codigo < b.e.curso.codigo && choca(a.s, b.s)) {
+      pares.add(a.e.curso.codigo + " ↔ " + b.e.curso.codigo);
+    }
+  }
+  document.getElementById("warn").textContent =
+    pares.size ? "⚠ Cruce: " + [...pares].join(", ") : "";
+}
+
+function pintar() { pintarLista(); pintarGrilla(); pintarBarra(); }
+
+document.getElementById("q").oninput = pintarLista;
+document.getElementById("clear").onclick = () => {
+  if (sel.length && confirm("¿Quitar todos los cursos del horario?")) { sel = []; guardar(); pintar(); }
+};
+document.getElementById("copy").onclick = () => {
+  const txt = elegidos().map(e =>
+    `${e.curso.codigo} ${e.curso.nombre} — Sec ${e.sec.seccion}${e.lab ? " / " + e.lab.grupo : ""}\n  ` +
+    e.sesiones.map(s => `${ABBR[s.dia]} ${hhmm(s.inicio)}-${hhmm(s.fin)} ${s.ubicacion}`).join("\n  ")
+  ).join("\n");
+  navigator.clipboard.writeText(txt).then(
+    () => { const b = document.getElementById("copy"); b.textContent = "¡Copiado!";
+            setTimeout(() => b.textContent = "Copiar resumen", 1200); },
+    () => alert(txt));
+};
+document.getElementById("src").textContent = "· " + cursos.length + " cursos filtrados";
+
+pintarFiltros();
+pintar();
+</script>
+</body>
+</html>
